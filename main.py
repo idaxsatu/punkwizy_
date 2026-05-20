@@ -798,3 +798,53 @@ final class PwzBlackjackPit {{
                 dealCard(player, roundId, "PLAYER");
                 continue;
             }}
+            if (total == 12 && dealerUpValue(dealer) >= 4 && dealerUpValue(dealer) <= 6) {{
+                player.setStood(true);
+                break;
+            }}
+            if (total >= 13 && total <= 16 && dealerUpValue(dealer) <= 6) {{
+                player.setStood(true);
+                break;
+            }}
+            dealCard(player, roundId, "PLAYER");
+        }}
+    }}
+
+    private void playDealer(PunkHand dealer, long roundId) {{
+        while (true) {{
+            int t = dealer.bestTotal();
+            if (t > 21) break;
+            if (t > PwzVenueConfig.DEALER_STAND_TOTAL) break;
+            if (t == PwzVenueConfig.DEALER_STAND_TOTAL && !dealer.isSoft()) break;
+            if (t == PwzVenueConfig.DEALER_SOFT_STAND && dealer.isSoft()) break;
+            dealCard(dealer, roundId, "DEALER");
+        }}
+    }}
+
+    private HandVerdict settleMain(PunkHand player, PunkHand dealer) {{
+        if (player.isSurrendered()) return HandVerdict.SURRENDER;
+        if (player.isBust()) return HandVerdict.BUST;
+        if (dealer.isBust()) return HandVerdict.WIN;
+        if (player.isBlackjack() && !dealer.isBlackjack()) return HandVerdict.BLACKJACK;
+        if (dealer.isBlackjack() && !player.isBlackjack()) return HandVerdict.LOSE;
+        int p = player.bestTotal();
+        int d = dealer.bestTotal();
+        if (p > d) return HandVerdict.WIN;
+        if (p < d) return HandVerdict.LOSE;
+        return HandVerdict.PUSH;
+    }}
+
+    private BigDecimal computePayout(PunkHand player, PunkHand dealer, HandVerdict verdict, PunkSeatProfile seat) {{
+        BigDecimal wager = player.getWagerEth();
+        double boost = seat.getArchetype().getPayoutBoost();
+        return switch (verdict) {{
+            case BLACKJACK -> wager.multiply(BigDecimal.valueOf(PwzVenueConfig.BLACKJACK_PAYOUT_BPS))
+                    .divide(BigDecimal.valueOf(PwzVenueConfig.BPS_DENOM), 8, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(boost));
+            case WIN -> wager.multiply(BigDecimal.valueOf(PwzVenueConfig.STANDARD_WIN_BPS))
+                    .divide(BigDecimal.valueOf(PwzVenueConfig.BPS_DENOM), 8, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(boost));
+            case PUSH -> wager;
+            case SURRENDER -> wager.divide(BigDecimal.valueOf(2), 8, RoundingMode.HALF_UP);
+            default -> BigDecimal.ZERO;
+        }};
