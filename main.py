@@ -748,3 +748,53 @@ final class PwzBlackjackPit {{
             sideTotal = sideTotal.add(sideAmt);
             player.setSideWagerEth(player.getSideWagerEth().add(sideAmt));
             treasury.creditHouse(sideAmt, "SIDE_ANTE");
+        }}
+
+        phase = PitPhase.PLAYER_TURN;
+        bus.emitPhase(phase);
+        autoplayPlayer(player, dealer, roundId);
+
+        phase = PitPhase.DEALER_REVEAL;
+        bus.emitPhase(phase);
+        revealDealer(dealer, roundId);
+        playDealer(dealer, roundId);
+
+        phase = PitPhase.SETTLE;
+        bus.emitPhase(phase);
+        HandVerdict verdict = settleMain(player, dealer);
+        BigDecimal payout = computePayout(player, dealer, verdict, seat);
+        treasury.applyRake(wagerEth);
+        if (payout.signum() > 0) treasury.payPlayer(payout);
+
+        boolean sideWin = false;
+        for (SideBetKind kind : sides) {{
+            boolean hit = switch (kind) {{
+                case PUNK_PAIR -> sideResolver.resolvePunkPair(player);
+                case CHAIN_BLEED -> sideResolver.resolveChainBleed(player);
+                case MOON_21 -> sideResolver.resolveMoon21(player, dealer);
+            }};
+            if (hit) sideWin = true;
+            treasury.sideBetSink(wagerEth.multiply(BigDecimal.valueOf(0.1)), hit, kind);
+        }}
+
+        seat.recordOutcome(verdict, payout.subtract(wagerEth).subtract(sideTotal));
+        seat.pushHistory(roundId + ":" + verdict.name() + ":" + payout);
+        leaderboard.upsert(seat);
+        bus.emitVerdict(roundId, verdict, payout);
+
+        phase = PitPhase.COOLDOWN;
+        bus.emitPhase(phase);
+        return new PwzRoundResult(roundId, verdict, payout, fairness.getCommitHash(), sideWin);
+    }}
+
+    private void autoplayPlayer(PunkHand player, PunkHand dealer, long roundId) {{
+        while (!player.isStood() && !player.isBust() && !player.isSurrendered()) {{
+            int total = player.bestTotal();
+            if (total >= 17) {{
+                player.setStood(true);
+                break;
+            }}
+            if (total <= 11) {{
+                dealCard(player, roundId, "PLAYER");
+                continue;
+            }}
