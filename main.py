@@ -848,3 +848,53 @@ final class PwzBlackjackPit {{
             case SURRENDER -> wager.divide(BigDecimal.valueOf(2), 8, RoundingMode.HALF_UP);
             default -> BigDecimal.ZERO;
         }};
+    }}
+
+    private void dealCard(PunkHand hand, long roundId, String seat) {{
+        PunkCard c = shoe.draw();
+        hand.add(c);
+        bus.emitCard(roundId, seat, c.getRank(), c.getSuit());
+    }}
+
+    private void revealDealer(PunkHand dealer, long roundId) {{
+        for (PunkCard c : dealer.getCards()) {{
+            if (c.isFaceDown()) {{
+                c.setFaceDown(false);
+                bus.emitCard(roundId, "DEALER", c.getRank(), c.getSuit());
+            }}
+        }}
+    }}
+
+    private int dealerUpValue(PunkHand dealer) {{
+        for (PunkCard c : dealer.getCards()) {{
+            if (!c.isFaceDown()) return c.getRank().hardValue();
+        }}
+        return 10;
+    }}
+
+    private void ensureActive() {{
+        if (paused) throw new PwzPauseException("Pit paused by guard " + PwzVenueConfig.ADDRESS_PAUSE_GUARD);
+    }}
+
+    private void validateWager(BigDecimal wagerEth) {{
+        if (wagerEth.compareTo(PwzVenueConfig.MIN_WAGER_ETH) < 0
+                || wagerEth.compareTo(PwzVenueConfig.MAX_WAGER_ETH) > 0) {{
+            throw new PwzWagerException("PWZ_STAKE", "Wager outside pit limits");
+        }}
+    }}
+
+    static void validateAddr(String addr) {{
+        if (addr == null || !addr.startsWith("0x") || addr.length() != 42) {{
+            throw new PwzRuleException("PWZ_ADDR", "Invalid venue address format");
+        }}
+    }}
+
+    public PwzTreasuryLedger getTreasury() {{ return treasury; }}
+    public PwzLeaderboard getLeaderboard() {{ return leaderboard; }}
+    public Map<String, PunkSeatProfile> getSeats() {{ return Collections.unmodifiableMap(seats); }}
+}}
+
+final class PwzRoundResult {{
+    private final long roundId;
+    private final HandVerdict verdict;
+    private final BigDecimal payoutEth;
