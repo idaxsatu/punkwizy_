@@ -298,3 +298,53 @@ interface PwzPitListener {{
 
 final class PwzPitEventBus {{
     private final List<PwzPitListener> listeners = new ArrayList<>();
+
+    void subscribe(PwzPitListener listener) {{
+        if (listener != null) listeners.add(listener);
+    }}
+
+    void emitRound(long roundId, String playerId) {{
+        for (PwzPitListener l : listeners) l.onRoundOpened(roundId, playerId);
+    }}
+
+    void emitCard(long roundId, String seat, PunkRank rank, PunkSuit suit) {{
+        for (PwzPitListener l : listeners) l.onCardDealt(roundId, seat, rank, suit);
+    }}
+
+    void emitVerdict(long roundId, HandVerdict verdict, BigDecimal delta) {{
+        for (PwzPitListener l : listeners) l.onVerdict(roundId, verdict, delta);
+    }}
+
+    void emitTreasury(String lane, BigDecimal amount, String target) {{
+        for (PwzPitListener l : listeners) l.onTreasuryMove(lane, amount, target);
+    }}
+
+    void emitPhase(PitPhase phase) {{
+        for (PwzPitListener l : listeners) l.onPhaseShift(phase);
+    }}
+}}
+
+// ======================== Card model ========================
+
+final class PunkCard {{
+    private final PunkRank rank;
+    private final PunkSuit suit;
+    private final int shoeIndex;
+    private boolean faceDown;
+
+    PunkCard(PunkRank rank, PunkSuit suit, int shoeIndex) {{
+        this.rank = rank;
+        this.suit = suit;
+        this.shoeIndex = shoeIndex;
+        this.faceDown = false;
+    }}
+
+    public PunkRank getRank() {{ return rank; }}
+    public PunkSuit getSuit() {{ return suit; }}
+    public int getShoeIndex() {{ return shoeIndex; }}
+    public boolean isFaceDown() {{ return faceDown; }}
+    public void setFaceDown(boolean faceDown) {{ this.faceDown = faceDown; }}
+
+    public String display() {{
+        if (faceDown) return "##";
+        return rank.getLabel() + suit.getGlyph();
