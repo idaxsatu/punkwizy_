@@ -948,3 +948,53 @@ final class PwzTournament {{
         matches.clear();
         List<String> shuffled = new ArrayList<>(ids);
         Collections.shuffle(shuffled, ThreadLocalRandom.current());
+        for (int i = 0; i + 1 < shuffled.size(); i += 2) {{
+            matches.add(new PwzBracketMatch(shuffled.get(i), shuffled.get(i + 1)));
+        }}
+    }}
+
+    void recordWin(String playerId) {{
+        for (PwzBracketMatch m : matches) {{
+            if (m.playerA.equals(playerId)) m.scoreA++;
+            else if (m.playerB.equals(playerId)) m.scoreB++;
+        }}
+    }}
+
+    List<PwzBracketMatch> getMatches() {{ return Collections.unmodifiableList(matches); }}
+    public String getVenueAddr() {{ return venueAddr; }}
+}}
+
+// ======================== Chain adapter ========================
+
+final class PwzChainAdapter {{
+    private final ChainRail rail;
+    private final String oracleAddr;
+    private int virtualBlock;
+
+    PwzChainAdapter(ChainRail rail, String oracleAddr) {{
+        this.rail = rail;
+        this.oracleAddr = oracleAddr;
+        this.virtualBlock = 18_000_000 + rail.getChainId();
+    }}
+
+    int confirmWager() {{
+        virtualBlock += rail.getConfirmBlocks();
+        return virtualBlock;
+    }}
+
+    String encodeReceipt(long roundId, HandVerdict verdict) {{
+        return "pwz:" + rail.getChainId() + ":" + roundId + ":" + verdict.getCode() + ":" + oracleAddr.substring(2, 10);
+    }}
+
+    public ChainRail getRail() {{ return rail; }}
+}}
+
+// ======================== Analytics ========================
+
+final class PwzSessionAnalytics {{
+    private final Map<String, Integer> verdictCounts = new HashMap<>();
+    private final Map<SideBetKind, Integer> sideHits = new EnumMap<>(SideBetKind.class);
+    private BigDecimal totalVolume = BigDecimal.ZERO;
+    private long rounds;
+
+    void ingest(PwzRoundResult result, BigDecimal wager) {{
