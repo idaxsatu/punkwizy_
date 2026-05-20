@@ -548,3 +548,53 @@ final class PwzLeaderboard {{
     }}
 }}
 
+// ======================== Treasury ========================
+
+final class PwzTreasuryLedger {{
+    private BigDecimal houseBalance = BigDecimal.ZERO;
+    private BigDecimal rakeAccrued = BigDecimal.ZERO;
+    private BigDecimal rewardsPool = BigDecimal.ZERO;
+    private BigDecimal sidePool = BigDecimal.ZERO;
+    private final AtomicLong moveSeq = new AtomicLong(0);
+    private final List<String> audit = new ArrayList<>();
+    private final PwzPitEventBus bus;
+
+    PwzTreasuryLedger(PwzPitEventBus bus) {{
+        this.bus = bus;
+    }}
+
+    void creditHouse(BigDecimal eth, String lane) {{
+        houseBalance = houseBalance.add(eth);
+        bus.emitTreasury(lane, eth, PwzVenueConfig.ADDRESS_HOUSE);
+        audit("HOUSE+" + eth + "@" + lane);
+    }}
+
+    void applyRake(BigDecimal gross) {{
+        BigDecimal rake = gross.multiply(BigDecimal.valueOf(PwzVenueConfig.HOUSE_EDGE_BPS))
+                .divide(BigDecimal.valueOf(PwzVenueConfig.BPS_DENOM), 8, RoundingMode.HALF_UP);
+        BigDecimal capped = rake.min(gross.multiply(BigDecimal.valueOf(PwzVenueConfig.RAKE_CAP_BPS))
+                .divide(BigDecimal.valueOf(PwzVenueConfig.BPS_DENOM), 8, RoundingMode.HALF_UP));
+        rakeAccrued = rakeAccrued.add(capped);
+        houseBalance = houseBalance.add(capped);
+        bus.emitTreasury("RAKE", capped, PwzVenueConfig.ADDRESS_RAKE_VAULT);
+        audit("RAKE+" + capped);
+    }}
+
+    void payPlayer(BigDecimal eth) {{
+        if (houseBalance.compareTo(eth) < 0) {{
+            rewardsPool = rewardsPool.subtract(eth.subtract(houseBalance));
+            houseBalance = BigDecimal.ZERO;
+        }} else {{
+            houseBalance = houseBalance.subtract(eth);
+        }}
+        audit("PAYOUT-" + eth);
+    }}
+
+    void sideBetSink(BigDecimal eth, boolean win, SideBetKind kind) {{
+        if (win) {{
+            BigDecimal payout = eth.multiply(BigDecimal.valueOf(kind.getPayoutMultiple()));
+            sidePool = sidePool.subtract(payout);
+            payPlayer(payout);
+            bus.emitTreasury("SIDE_WIN", payout, PwzVenueConfig.ADDRESS_SIDE_POOL);
+        }} else {{
+            sidePool = sidePool.add(eth);
