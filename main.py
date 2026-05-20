@@ -498,3 +498,53 @@ final class PunkSeatProfile {{
         else addXp(1);
     }}
 
+    void pushHistory(String snippet) {{
+        recentRounds.addFirst(snippet);
+        while (recentRounds.size() > 32) recentRounds.removeLast();
+    }}
+
+    public List<String> getRecentRounds() {{ return new ArrayList<>(recentRounds); }}
+    public PunkArchetype getArchetype() {{ return PunkArchetype.forXp(xp); }}
+    public BigDecimal netEth() {{ return lifetimeWon.subtract(lifetimeLost); }}
+}}
+
+final class PwzLeaderboardEntry implements Comparable<PwzLeaderboardEntry> {{
+    final String playerId;
+    final BigDecimal netEth;
+    final int xp;
+    final long updatedEpoch;
+
+    PwzLeaderboardEntry(String playerId, BigDecimal netEth, int xp, long updatedEpoch) {{
+        this.playerId = playerId;
+        this.netEth = netEth;
+        this.xp = xp;
+        this.updatedEpoch = updatedEpoch;
+    }}
+
+    @Override
+    public int compareTo(PwzLeaderboardEntry o) {{
+        int c = o.netEth.compareTo(netEth);
+        if (c != 0) return c;
+        return Integer.compare(o.xp, xp);
+    }}
+}}
+
+final class PwzLeaderboard {{
+    private final PriorityQueue<PwzLeaderboardEntry> heap =
+            new PriorityQueue<>(Comparator.reverseOrder());
+
+    synchronized void upsert(PunkSeatProfile profile) {{
+        PwzLeaderboardEntry e = new PwzLeaderboardEntry(
+                profile.getPlayerId(),
+                profile.netEth(),
+                profile.getXp(),
+                Instant.now().getEpochSecond());
+        heap.offer(e);
+        while (heap.size() > PwzVenueConfig.LEADERBOARD_CAP) heap.poll();
+    }}
+
+    synchronized List<PwzLeaderboardEntry> top(int n) {{
+        return heap.stream().sorted().limit(n).collect(Collectors.toList());
+    }}
+}}
+
