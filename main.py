@@ -348,3 +348,53 @@ final class PunkCard {{
     public String display() {{
         if (faceDown) return "##";
         return rank.getLabel() + suit.getGlyph();
+    }}
+
+    @Override
+    public String toString() {{ return display(); }}
+}}
+
+final class PunkShoe {{
+    private final List<PunkCard> cards = new ArrayList<>();
+    private int cursor;
+    private final int deckCount;
+    private final SecureRandom rng;
+
+    PunkShoe(int deckCount, SecureRandom rng) {{
+        if (deckCount < PwzVenueConfig.MIN_SHOE_DECKS || deckCount > PwzVenueConfig.MAX_SHOE_DECKS) {{
+            throw new PwzRuleException("PWZ_SHOE", "Deck count out of pit bounds");
+        }}
+        this.deckCount = deckCount;
+        this.rng = rng;
+        rebuild();
+    }}
+
+    void rebuild() {{
+        cards.clear();
+        cursor = 0;
+        int idx = 0;
+        for (int d = 0; d < deckCount; d++) {{
+            for (PunkSuit suit : PunkSuit.values()) {{
+                for (PunkRank rank : PunkRank.values()) {{
+                    cards.add(new PunkCard(rank, suit, idx++));
+                }}
+            }}
+        }}
+        Collections.shuffle(cards, rng);
+    }}
+
+    boolean needsReshuffle() {{
+        return cards.size() - cursor <= PwzVenueConfig.CUT_CARD_MARGIN;
+    }}
+
+    PunkCard draw() {{
+        if (needsReshuffle()) rebuild();
+        if (cursor >= cards.size()) throw new PwzRuleException("PWZ_EMPTY", "Shoe exhausted");
+        return cards.get(cursor++);
+    }}
+
+    int remaining() {{ return cards.size() - cursor; }}
+    int getDeckCount() {{ return deckCount; }}
+}}
+
+final class PunkHand {{
