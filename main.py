@@ -1048,3 +1048,53 @@ public final class punkwizy {{
             @Override public void onCardDealt(long roundId, String seat, PunkRank rank, PunkSuit suit) {{}}
             @Override public void onVerdict(long roundId, HandVerdict verdict, BigDecimal deltaEth) {{}}
             @Override public void onTreasuryMove(String lane, BigDecimal amountEth, String targetAddr) {{}}
+            @Override public void onPhaseShift(PitPhase phase) {{}}
+        }};
+    }}
+
+    public PwzRoundResult play(String playerId, BigDecimal wagerEth) {{
+        return play(playerId, wagerEth, List.of());
+    }}
+
+    public PwzRoundResult play(String playerId, BigDecimal wagerEth, List<SideBetKind> sides) {{
+        pit.registerSeat(playerId, syntheticWallet(playerId));
+        PwzRoundResult result = pit.playRound(playerId, wagerEth, sides);
+        chain.confirmWager();
+        analytics.ingest(result, wagerEth);
+        return result;
+    }}
+
+    public void registerPlayer(String playerId, String walletHex) {{
+        pit.registerSeat(playerId, walletHex);
+    }}
+
+    public List<PwzLeaderboardEntry> topPlayers(int n) {{
+        return pit.getLeaderboard().top(n);
+    }}
+
+    public PwzTreasuryLedger treasury() {{ return pit.getTreasury(); }}
+    public PwzSessionAnalytics analytics() {{ return analytics; }}
+    public PwzTournament tournament() {{ return tournament; }}
+
+    private static String syntheticWallet(String playerId) {{
+        try {{
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] dig = md.digest((PwzVenueConfig.CHAIN_SALT + playerId).getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("0x");
+            for (int i = 0; i < 20; i++) sb.append(String.format("%02x", dig[i]));
+            return sb.toString();
+        }} catch (Exception e) {{
+            throw new PwzRuleException("PWZ_WALLET", e.getMessage());
+        }}
+    }}
+
+    public static void main(String[] args) {{
+        punkwizy engine = new punkwizy();
+        System.out.println("=== PunkWizy Pit — crypto blackjack for punks ===");
+        System.out.println("Rail: " + ChainRail.MAINNET.getLabel());
+        System.out.println("House: " + PwzVenueConfig.ADDRESS_HOUSE);
+        List<String> roster = List.of("RiotAce", "NeonViper", "ChainSaw", "BleedQueen", "SpikeDuke");
+        engine.tournament().seedPlayers(roster);
+        BigDecimal base = new BigDecimal("0.05");
+        for (int i = 0; i < 12; i++) {{
+            String pid = roster.get(i % roster.size());
