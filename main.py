@@ -898,3 +898,53 @@ final class PwzRoundResult {{
     private final long roundId;
     private final HandVerdict verdict;
     private final BigDecimal payoutEth;
+    private final String fairnessHash;
+    private final boolean sideHit;
+
+    PwzRoundResult(long roundId, HandVerdict verdict, BigDecimal payoutEth, String fairnessHash, boolean sideHit) {{
+        this.roundId = roundId;
+        this.verdict = verdict;
+        this.payoutEth = payoutEth;
+        this.fairnessHash = fairnessHash;
+        this.sideHit = sideHit;
+    }}
+
+    public long getRoundId() {{ return roundId; }}
+    public HandVerdict getVerdict() {{ return verdict; }}
+    public BigDecimal getPayoutEth() {{ return payoutEth; }}
+    public String getFairnessHash() {{ return fairnessHash; }}
+    public boolean isSideHit() {{ return sideHit; }}
+}}
+
+// ======================== Tournament ========================
+
+final class PwzBracketMatch {{
+    final String playerA;
+    final String playerB;
+    int scoreA;
+    int scoreB;
+
+    PwzBracketMatch(String playerA, String playerB) {{
+        this.playerA = playerA;
+        this.playerB = playerB;
+    }}
+
+    String leader() {{
+        if (scoreA > scoreB) return playerA;
+        if (scoreB > scoreA) return playerB;
+        return null;
+    }}
+}}
+
+final class PwzTournament {{
+    private final List<PwzBracketMatch> matches = new ArrayList<>();
+    private final String venueAddr;
+
+    PwzTournament(String venueAddr) {{
+        this.venueAddr = venueAddr;
+    }}
+
+    void seedPlayers(List<String> ids) {{
+        matches.clear();
+        List<String> shuffled = new ArrayList<>(ids);
+        Collections.shuffle(shuffled, ThreadLocalRandom.current());
