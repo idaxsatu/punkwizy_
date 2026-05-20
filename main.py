@@ -998,3 +998,53 @@ final class PwzSessionAnalytics {{
     private long rounds;
 
     void ingest(PwzRoundResult result, BigDecimal wager) {{
+        rounds++;
+        totalVolume = totalVolume.add(wager);
+        verdictCounts.merge(result.getVerdict().name(), 1, Integer::sum);
+    }}
+
+    void ingestSide(SideBetKind kind) {{
+        sideHits.merge(kind, 1, Integer::sum);
+    }}
+
+    public long getRounds() {{ return rounds; }}
+    public BigDecimal getTotalVolume() {{ return totalVolume; }}
+
+    public Map<String, Integer> getVerdictCounts() {{
+        return Collections.unmodifiableMap(verdictCounts);
+    }}
+
+    public double hitRate(HandVerdict v) {{
+        if (rounds == 0) return 0;
+        return verdictCounts.getOrDefault(v.name(), 0) / (double) rounds;
+    }}
+}}
+
+// ======================== Public facade ========================
+
+public final class punkwizy {{
+    private final PwzBlackjackPit pit;
+    private final PwzChainAdapter chain;
+    private final PwzTournament tournament;
+    private final PwzSessionAnalytics analytics = new PwzSessionAnalytics();
+    private final SecureRandom rng = new SecureRandom();
+
+    public punkwizy() {{
+        this(PwzVenueConfig.ADDRESS_HOUSE, PwzVenueConfig.ADDRESS_ORACLE, ChainRail.MAINNET);
+    }}
+
+    public punkwizy(String houseAddr, String oracleAddr, ChainRail rail) {{
+        PwzBlackjackPit.validateAddr(houseAddr);
+        PwzBlackjackPit.validateAddr(oracleAddr);
+        this.pit = new PwzBlackjackPit(houseAddr, oracleAddr, rail, rng);
+        this.chain = new PwzChainAdapter(rail, oracleAddr);
+        this.tournament = new PwzTournament(PwzVenueConfig.ADDRESS_TOURNEY);
+        pit.getBus().subscribe(loggingListener());
+    }}
+
+    private PwzPitListener loggingListener() {{
+        return new PwzPitListener() {{
+            @Override public void onRoundOpened(long roundId, String playerId) {{}}
+            @Override public void onCardDealt(long roundId, String seat, PunkRank rank, PunkSuit suit) {{}}
+            @Override public void onVerdict(long roundId, HandVerdict verdict, BigDecimal deltaEth) {{}}
+            @Override public void onTreasuryMove(String lane, BigDecimal amountEth, String targetAddr) {{}}
