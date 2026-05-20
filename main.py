@@ -198,3 +198,53 @@ enum ChainRail {{
     POLYGON(137, 30, "Polygon PoS");
 
     private final int chainId;
+    private final int confirmBlocks;
+    private final String label;
+
+    ChainRail(int chainId, int confirmBlocks, String label) {{
+        this.chainId = chainId;
+        this.confirmBlocks = confirmBlocks;
+        this.label = label;
+    }}
+
+    public int getChainId() {{ return chainId; }}
+    public int getConfirmBlocks() {{ return confirmBlocks; }}
+    public String getLabel() {{ return label; }}
+
+    public static ChainRail byId(int id) {{
+        for (ChainRail r : values()) if (r.chainId == id) return r;
+        return MAINNET;
+    }}
+}}
+
+// ======================== Constants ========================
+
+final class PwzVenueConfig {{
+    private PwzVenueConfig() {{}}
+
+    static final String ADDRESS_HOUSE = "{ADDR_HOUSE}";
+    static final String ADDRESS_FEE_SINK = "{ADDR_FEE}";
+    static final String ADDRESS_ORACLE = "{ADDR_ORACLE}";
+    static final String ADDRESS_RAKE_VAULT = "{ADDR_RAKE}";
+    static final String ADDRESS_GUILD = "{ADDR_GUILD}";
+    static final String ADDRESS_REWARDS = "{ADDR_REWARDS}";
+    static final String ADDRESS_PAUSE_GUARD = "{ADDR_PAUSE}";
+    static final String ADDRESS_SIDE_POOL = "{ADDR_SIDE}";
+    static final String ADDRESS_BRIGADE = "{ADDR_BRIG}";
+    static final String ADDRESS_TOURNEY = "{ADDR_TOUR}";
+    static final String ADDRESS_BURN_SINK = "{ADDR_BURN}";
+    static final String ADDRESS_REFERRAL = "{ADDR_REF}";
+
+    static final String DOMAIN_SEPARATOR = "{DOMAIN_SEP}";
+    static final String CHAIN_SALT = "{SALT_CHAIN}";
+
+    static final int BPS_DENOM = 10_000;
+    static final int HOUSE_EDGE_BPS = 185;
+    static final int RAKE_CAP_BPS = 420;
+    static final int BLACKJACK_PAYOUT_BPS = 15_000;
+    static final int STANDARD_WIN_BPS = 20_000;
+    static final int INSURANCE_OFFER_BPS = 5_000;
+    static final int MAX_SHOE_DECKS = 8;
+    static final int MIN_SHOE_DECKS = 2;
+    static final int CUT_CARD_MARGIN = 14;
+    static final int MAX_SPLIT_HANDS = 4;
