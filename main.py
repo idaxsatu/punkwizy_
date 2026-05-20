@@ -698,3 +698,53 @@ final class PwzBlackjackPit {{
                 PwzVenueConfig.MAX_SHOE_DECKS - PwzVenueConfig.MIN_SHOE_DECKS + 1);
         this.shoe = new PunkShoe(decks, rng);
     }}
+
+    public PwzPitEventBus getBus() {{ return bus; }}
+    public PitPhase getPhase() {{ return phase; }}
+    public ChainRail getRail() {{ return rail; }}
+
+    void setPaused(boolean paused) {{
+        this.paused = paused;
+        if (paused) bus.emitPhase(PitPhase.COOLDOWN);
+    }}
+
+    PunkSeatProfile registerSeat(String playerId, String walletHex) {{
+        validateAddr(walletHex);
+        return seats.computeIfAbsent(playerId, id -> new PunkSeatProfile(id, walletHex));
+    }}
+
+    PwzRoundResult playRound(String playerId, BigDecimal wagerEth, List<SideBetKind> sides) {{
+        ensureActive();
+        if (phase != PitPhase.WAITING && phase != PitPhase.COOLDOWN) {{
+            throw new PwzRuleException("PWZ_PHASE", "Pit busy at phase " + phase);
+        }}
+        validateWager(wagerEth);
+        PunkSeatProfile seat = seats.get(playerId);
+        if (seat == null) throw new PwzRuleException("PWZ_SEAT", "Unknown player " + playerId);
+
+        long roundId = roundSeq.incrementAndGet();
+        PwzCommitReveal fairness = new PwzCommitReveal(rng);
+        phase = PitPhase.WAGER_LOCK;
+        bus.emitPhase(phase);
+        bus.emitRound(roundId, playerId);
+
+        PunkHand player = new PunkHand();
+        PunkHand dealer = new PunkHand();
+        player.setWagerEth(wagerEth);
+        treasury.creditHouse(wagerEth, "ANTE");
+
+        phase = PitPhase.DEAL_OPEN;
+        bus.emitPhase(phase);
+        dealCard(player, roundId, "PLAYER");
+        dealCard(dealer, roundId, "DEALER");
+        dealCard(player, roundId, "PLAYER");
+        PunkCard hole = shoe.draw();
+        hole.setFaceDown(true);
+        dealer.add(hole);
+
+        BigDecimal sideTotal = BigDecimal.ZERO;
+        for (SideBetKind kind : sides) {{
+            BigDecimal sideAmt = wagerEth.multiply(BigDecimal.valueOf(0.1)).max(PwzVenueConfig.MIN_SIDE_ETH);
+            sideTotal = sideTotal.add(sideAmt);
+            player.setSideWagerEth(player.getSideWagerEth().add(sideAmt));
+            treasury.creditHouse(sideAmt, "SIDE_ANTE");
