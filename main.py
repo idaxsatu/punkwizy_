@@ -48,3 +48,53 @@ import java.util.stream.Collectors;
 enum PunkSuit {{
     SPADES(0, "\\u2660", "Void Spade"),
     HEARTS(1, "\\u2665", "Bleed Heart"),
+    CLUBS(2, "\\u2663", "Riot Club"),
+    DIAMONDS(3, "\\u2666", "Chrome Diamond");
+
+    private final int code;
+    private final String glyph;
+    private final String lane;
+
+    PunkSuit(int code, String glyph, String lane) {{
+        this.code = code;
+        this.glyph = glyph;
+        this.lane = lane;
+    }}
+
+    public int getCode() {{ return code; }}
+    public String getGlyph() {{ return glyph; }}
+    public String getLane() {{ return lane; }}
+
+    public static PunkSuit fromCode(int c) {{
+        for (PunkSuit s : values()) if (s.code == c) return s;
+        throw new PwzRuleException("PWZ_SUIT", "Unknown suit code " + c);
+    }}
+}}
+
+enum PunkRank {{
+    ACE(1, "A", 11, 1),
+    TWO(2, "2", 2, 2),
+    THREE(3, "3", 3, 3),
+    FOUR(4, "4", 4, 4),
+    FIVE(5, "5", 5, 5),
+    SIX(6, "6", 6, 6),
+    SEVEN(7, "7", 7, 7),
+    EIGHT(8, "8", 8, 8),
+    NINE(9, "9", 9, 9),
+    TEN(10, "10", 10, 10),
+    JACK(11, "J", 10, 10),
+    QUEEN(12, "Q", 10, 10),
+    KING(13, "K", 10, 10);
+
+    private final int code;
+    private final String label;
+    private final int softValue;
+    private final int hardValue;
+
+    PunkRank(int code, String label, int softValue, int hardValue) {{
+        this.code = code;
+        this.label = label;
+        this.softValue = softValue;
+        this.hardValue = hardValue;
+    }}
+
