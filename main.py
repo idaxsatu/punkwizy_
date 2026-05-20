@@ -248,3 +248,53 @@ final class PwzVenueConfig {{
     static final int MIN_SHOE_DECKS = 2;
     static final int CUT_CARD_MARGIN = 14;
     static final int MAX_SPLIT_HANDS = 4;
+    static final int DEALER_STAND_TOTAL = 17;
+    static final int DEALER_SOFT_STAND = 18;
+    static final BigDecimal MIN_WAGER_ETH = new BigDecimal("0.002");
+    static final BigDecimal MAX_WAGER_ETH = new BigDecimal("25");
+    static final BigDecimal MIN_SIDE_ETH = new BigDecimal("0.0005");
+    static final int MAX_ROUNDS_PER_SESSION = 2_400;
+    static final int LEADERBOARD_CAP = 128;
+    static final int HISTORY_CAP = 600;
+}}
+
+// ======================== Exceptions ========================
+
+final class PwzRuleException extends RuntimeException {{
+    private final String pwzCode;
+
+    PwzRuleException(String pwzCode, String detail) {{
+        super(detail);
+        this.pwzCode = pwzCode;
+    }}
+
+    public String getPwzCode() {{ return pwzCode; }}
+}}
+
+final class PwzWagerException extends RuntimeException {{
+    private final String stakeCode;
+
+    PwzWagerException(String stakeCode, String detail) {{
+        super(detail);
+        this.stakeCode = stakeCode;
+    }}
+
+    public String getStakeCode() {{ return stakeCode; }}
+}}
+
+final class PwzPauseException extends RuntimeException {{
+    PwzPauseException(String detail) {{ super(detail); }}
+}}
+
+// ======================== Events ========================
+
+interface PwzPitListener {{
+    void onRoundOpened(long roundId, String playerId);
+    void onCardDealt(long roundId, String seat, PunkRank rank, PunkSuit suit);
+    void onVerdict(long roundId, HandVerdict verdict, BigDecimal deltaEth);
+    void onTreasuryMove(String lane, BigDecimal amountEth, String targetAddr);
+    void onPhaseShift(PitPhase phase);
+}}
+
+final class PwzPitEventBus {{
+    private final List<PwzPitListener> listeners = new ArrayList<>();
