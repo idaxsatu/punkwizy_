@@ -1298,3 +1298,34 @@ for cmd in cmds:
 EXPANSION.append("\n    static boolean dispatch(String raw, punkwizy engine) {\n")
 EXPANSION.append("        if (raw == null || raw.isBlank()) return false;\n")
 EXPANSION.append('        String[] parts = raw.trim().split("\\\\s+");\n')
+EXPANSION.append("        String op = parts[0].toLowerCase(Locale.ROOT);\n")
+EXPANSION.append("        return switch (op) {\n")
+EXPANSION.append('            case "deal" -> {\n')
+EXPANSION.append('                if (parts.length < 3) yield false;\n')
+EXPANSION.append("                BigDecimal w = new BigDecimal(parts[2]);\n")
+EXPANSION.append("                PwzRoundResult r = engine.play(parts[1], w);\n")
+EXPANSION.append("                System.out.println(r.getVerdict() + \" \" + r.getPayoutEth());\n")
+EXPANSION.append("                yield true;\n")
+EXPANSION.append("            }\n")
+EXPANSION.append('            case "top" -> {\n')
+EXPANSION.append("                engine.topPlayers(10).forEach(e -> System.out.println(e.playerId + \" \" + e.netEth));\n")
+EXPANSION.append("                yield true;\n")
+EXPANSION.append("            }\n")
+EXPANSION.append('            case "audit" -> {\n')
+EXPANSION.append("                engine.treasury().getAuditTail(12).forEach(System.out::println);\n")
+EXPANSION.append("                yield true;\n")
+EXPANSION.append("            }\n")
+EXPANSION.append("            default -> false;\n")
+EXPANSION.append("        };\n")
+EXPANSION.append("    }\n")
+EXPANSION.append("}\n")
+
+body = HEADER
+# Insert expansion before public class - find marker
+marker = "// ======================== Public facade ========================"
+idx = body.index(marker)
+body = body[:idx] + "".join(EXPANSION) + body[idx:]
+
+OUT.write_text(body, encoding="utf-8")
+line_count = len(body.splitlines())
+print(f"Wrote {OUT} ({line_count} lines)")
